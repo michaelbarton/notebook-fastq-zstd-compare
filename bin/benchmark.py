@@ -1,7 +1,9 @@
 import abc
 import csv
 import dataclasses
+import itertools
 import logging
+import multiprocessing
 import subprocess
 import tempfile
 import time
@@ -60,50 +62,44 @@ class AbstractBenchmark(abc.ABC):
     def _decompress(self, src_file: Path) -> None:
         ...
 
+    def _exec_single_iteration(
+        self,
+        src_file: Path,
+        compression_level: int,
+        idx: int,
+    ) -> BenchmarkRow:
+        original_file_size = src_file.stat().st_size
+        dst_file = Path(tempfile.mkdtemp()) / f"{src_file.name}.{compression_level}.{self.suffix()}"
+        compression_time = self.run_time_s(self._compress, src_file, dst_file, compression_level)
+        file_size = dst_file.stat().st_size
+        decompression_time = self.run_time_s(self._decompress, dst_file)
+        compression_ratio = file_size / original_file_size
+        for tmp_file in dst_file.parent.glob("*"):
+            tmp_file.unlink()
+
+        LOGGER.debug(
+            "Benchmarked i=%s name=%s level=%s time=%.2f ratio=%.2f",
+            idx,
+            self.name(),
+            compression_level,
+            compression_time + decompression_time,
+            compression_ratio,
+        )
+        return BenchmarkRow(
+            self.name(),
+            compression_time,
+            decompression_time,
+            compression_level,
+            compression_ratio,
+        )
+
     def benchmark(
-        self, src_file: Path, n_times: int, compression_levels: List[int]
+        self, src_file: Path, n_times: int, compression_levels: List[int], processes: int
     ) -> List[BenchmarkRow]:
         """Benchmark a compression algorithm."""
-        original_file_size = src_file.stat().st_size
-
-        benchmark_rows: List[BenchmarkRow] = []
-
-        for compression_level in compression_levels:
-            for idx in range(n_times):
-                dst_file = (
-                    Path(tempfile.mkdtemp())
-                    / f"{src_file.name}.{compression_level}.{self.suffix()}"
-                )
-                compression_time = self.run_time_s(
-                    self._compress, src_file, dst_file, compression_level
-                )
-                file_size = dst_file.stat().st_size
-                decompression_time = self.run_time_s(self._decompress, dst_file)
-                compression_ratio = file_size / original_file_size
-                benchmark_rows.append(
-                    BenchmarkRow(
-                        self.name(),
-                        compression_time,
-                        decompression_time,
-                        compression_level,
-                        compression_ratio,
-                    )
-                )
-
-                for tmp_file in dst_file.parent.glob("*"):
-                    tmp_file.unlink()
-
-                LOGGER.debug(
-                    "Benchmarked i=%s name=%s level=%s time=%.2f ratio=%.2f",
-                    idx,
-                    self.name(),
-                    compression_level,
-                    compression_time + decompression_time,
-                    compression_ratio,
-                )
-            LOGGER.info("Finished benchmarking name=%s level=%s", self.name(), compression_level)
-
-        return benchmark_rows
+        args = ((src_file, *x) for x in itertools.product(compression_levels, range(n_times)))
+        with multiprocessing.Pool(processes=processes) as pool:
+            return pool.starmap(self._exec_single_iteration, args)
 
 
 class GzipBenchmark(AbstractBenchmark):
@@ -161,7 +157,7 @@ def test_benchmarks(benchmark: Type[AbstractBenchmark]):
     """Test all benchmarks."""
     test_file = Path(tempfile.mkdtemp()) / "test.txt"
     test_file.write_text("Quick brown fox jumps over the lazy dog\n")
-    results = benchmark().benchmark(test_file, 1, [1])
+    results = benchmark().benchmark(test_file, 1, [1], processes=1)
     assert results
     assert results[0].method == benchmark().name()
 
@@ -185,12 +181,22 @@ def test_benchmarks(benchmark: Type[AbstractBenchmark]):
 @click.option(
     "--verbose/--no-verbose", "-v", type=bool, help="How verbose to log output.", default=False
 )
-def main(input_file: str, output_csv_file: str, iterations: int, verbose: bool = False) -> None:
+@click.option(
+    "--processes",
+    "-p",
+    type=int,
+    help="Number of processes to use for benchmarking.",
+    default=1,
+    required=False,
+)
+def main(
+    input_file: str, output_csv_file: str, iterations: int, processes: int, verbose: bool = False
+) -> None:
     if verbose:
         LOGGER.setLevel(logging.DEBUG)
 
-    zstd_compression_levels = list(range(2, 19))
-    gzip_compression_levels = list(range(2, 9))
+    zstd_compression_levels = list(range(2, 20))
+    gzip_compression_levels = list(range(2, 10))
     with open(output_csv_file, "w") as fh_out:
         csv_out = csv.DictWriter(
             fh_out,
@@ -210,7 +216,10 @@ def main(input_file: str, output_csv_file: str, iterations: int, verbose: bool =
                 else gzip_compression_levels
             )
             benchmark_rows = benchmark().benchmark(
-                src_file=Path(input_file), n_times=iterations, compression_levels=compression_levels
+                src_file=Path(input_file),
+                n_times=iterations,
+                compression_levels=compression_levels,
+                processes=processes,
             )
             for row in benchmark_rows:
                 csv_out.writerow(dataclasses.asdict(row))
