@@ -3,6 +3,12 @@ services:
   runner:
     build:
       context: .
+    working_dir: /root
+    environment:
+      PYTHONPATH: "/root"
     volumes:
       - ./data:/mnt/data:ro
       - ./out:/mnt/out:rw
+      - ./test:/root/test:rw
+      - ./lib:/root/lib:rw
+      - ./bin:/root/bin:rw
