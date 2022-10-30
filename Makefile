@@ -2,13 +2,13 @@ export COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1
 
 ITERATIONS = 10
 
-all: image test benchmark.SRR7589561.csv
+all: image test out/benchmark.SRR7589561.small.csv
 
-benchmark.%.csv: data/%.fastq
+out/benchmark.%.csv: data/%.fastq
 	docker-compose run --rm runner \
 	python3 /root/bin/benchmark.py \
 		--input-file=/mnt/$< \
-		--output-csv-file=/mnt/out/benchmarks.csv \
+		--output-csv-file=/mnt/$@ \
 		--iterations=${ITERATIONS} \
 		--verbose
 
