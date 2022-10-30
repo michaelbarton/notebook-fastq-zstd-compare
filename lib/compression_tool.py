@@ -41,7 +41,7 @@ GZIP_LIB_DEFLATE = CompressionTool(
         ">",
         dst,
     ],
-    decompress_cmd=lambda src: ["libdeflate-gunzip", "-d", src],
+    decompress_cmd=lambda src: ["gunzip", src],
     allowed_levels=[1, 2, 3, 4, 5, 6, 7, 8, 9]
 )
 

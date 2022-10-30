@@ -2,7 +2,7 @@ export COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1
 
 ITERATIONS = 10
 
-all: benchmark.SRR7589561.csv
+all: image test benchmark.SRR7589561.csv
 
 benchmark.%.csv: data/%.fastq
 	docker-compose run --rm runner \

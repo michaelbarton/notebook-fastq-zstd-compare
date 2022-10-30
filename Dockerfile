@@ -28,5 +28,5 @@ RUN apt-get install --yes zstd pigz zopfli
 RUN pip3 install click pytest
 COPY --from=deflate-ng-builder zlib-ng/minigzip /usr/local/bin/minigzip-ng
 COPY --from=cloudflare-builder cloudflare-zlib/minigzip /usr/local/bin/minigzip-cloudflare
-COPY --from=libdeflate-builder libdeflate/build/programs/libdeflate-gzip /usr/local/bin/libdeflate-gunzip
+COPY --from=libdeflate-builder libdeflate/build/programs/libdeflate-gzip /usr/local/bin/libdeflate-gzip
 
