@@ -12,3 +12,13 @@ services:
       - ./test:/root/test:rw
       - ./lib:/root/lib:rw
       - ./bin:/root/bin:rw
+
+  notebook_builder:
+    build:
+      context: .
+    working_dir: /root
+    volumes:
+      - ./data:/mnt/data:ro
+      - ./src:/mnt/src:rw
+      - ./out:/mnt/out:rw
+

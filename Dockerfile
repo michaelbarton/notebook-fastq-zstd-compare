@@ -30,3 +30,5 @@ COPY --from=deflate-ng-builder zlib-ng/minigzip /usr/local/bin/minigzip-ng
 COPY --from=cloudflare-builder cloudflare-zlib/minigzip /usr/local/bin/minigzip-cloudflare
 COPY --from=libdeflate-builder libdeflate/build/programs/libdeflate-gzip /usr/local/bin/libdeflate-gzip
 
+
+FROM rocker/r-rmd AS notebook-builder

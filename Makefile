@@ -4,6 +4,10 @@ ITERATIONS = 10
 
 all: image test out/benchmark.SRR7589561.small.csv
 
+out/notebook.md: src/notebook.Rmd
+	docker-compose run --rm notebook_builder \
+		Rscript -e "rmarkdown::render('/mnt/$<', 'md_document', output_file = '/mnt/$@')"
+
 out/benchmark.%.csv: data/%.fastq
 	docker-compose run --rm runner \
 	python3 /root/bin/benchmark.py \
@@ -11,6 +15,7 @@ out/benchmark.%.csv: data/%.fastq
 		--output-csv-file=/mnt/$@ \
 		--iterations=${ITERATIONS} \
 		--verbose
+
 
 test: image
 	docker-compose run --rm runner pytest .
