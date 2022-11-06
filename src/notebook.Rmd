@@ -1,3 +1,48 @@
-# Title
+---
+title: "Untitled"
+---
 
-text
+```{r, load-data, echo=FALSE, message=FALSE, fig.height=4}
+library('ggplot2')
+library('tidyverse')
+
+# knitr::opts_knit$set(root.dir = '~/cache/zstd-comparison')
+
+# Knitr automatically assumes the current working directory is where the file is.
+data <- read.csv('../out/benchmark.SRR7589561.csv', header=TRUE)
+```
+
+## Summary
+
+- The original gzip is 30 years old this year, and has been surpassed by other
+  implementations, and other algorithms, yet it is still the default for FASTQ
+  data.
+- When using gzip, consider using pigz gzip-cloudflare instead of the original
+  Gailly/Madler gzip.
+- The field should consider the widely zstd format to compress FASTQ data. This
+  could provide comparable run times with large potential savings in storage.
+
+
+```{r, plot-file-size, results='asis', echo=FALSE, message=FALSE, fig.height=5}
+ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
+    geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
+    geom_line(stat="smooth",method = "loess", size = 1.5, alpha = 0.5) +
+    geom_point() +
+    theme_bw() +
+    # theme(legend.position=c(.8,.8), legend.box.background = element_rect(colour = "black")) +
+    scale_x_continuous("Compression level") +
+    scale_y_continuous("Ratio of compressed size to original size")
+```
+
+
+```{r, plot-compression-time, results='asis', echo=FALSE, message=FALSE, fig.height=5}
+
+ggplot(data=data, aes(y=compress_time, x=compression_ratio, color=method)) +
+    geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
+    geom_line(stat="smooth",method = "loess", size = 1.5, alpha = 0.5) +
+    geom_point() +
+    scale_x_log10("Ratio of compressed size to original size") +
+    scale_y_log10("Compression time in seconds (single thread)") +
+    theme_bw()
+```
+

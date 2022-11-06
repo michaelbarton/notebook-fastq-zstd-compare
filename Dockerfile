@@ -31,4 +31,7 @@ COPY --from=cloudflare-builder cloudflare-zlib/minigzip /usr/local/bin/minigzip-
 COPY --from=libdeflate-builder libdeflate/build/programs/libdeflate-gzip /usr/local/bin/libdeflate-gzip
 
 
-FROM rocker/r-rmd AS notebook-builder
+FROM rocker/r-rmd AS notebook_builder
+RUN Rscript -e "install.packages('tidyverse')"
+RUN Rscript -e "install.packages('ggplot2')"
+

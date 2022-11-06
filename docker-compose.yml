@@ -15,6 +15,7 @@ services:
 
   notebook_builder:
     build:
+      target: notebook_builder
       context: .
     working_dir: /root
     volumes:
