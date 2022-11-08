@@ -6,13 +6,11 @@ title: "Untitled"
 library('ggplot2')
 library('tidyverse')
 
-# knitr::opts_knit$set(root.dir = '~/cache/zstd-comparison')
+theme_set(theme_bw())
 
 # Knitr automatically assumes the current working directory is where the file is.
 data <- read.csv('../out/benchmark.SRR7589561.csv', header=TRUE)
 ```
-
-## Summary
 
 - The original gzip is 30 years old this year, and has been surpassed by other
   implementations, and other algorithms, yet it is still the default for FASTQ
@@ -22,14 +20,46 @@ data <- read.csv('../out/benchmark.SRR7589561.csv', header=TRUE)
 - The field should consider the widely zstd format to compress FASTQ data. This
   could provide comparable run times with large potential savings in storage.
 
+The gzip format is still ubiquitous for compressing FASTQ. This format is
+widely supported by bioinformatics tools for ingesting FASTQ. However in the
+thirty years since it was created there have been different implementations,
+and newer superior algorithms developed. The only the thing that seems to keep
+gzip in use for FASTQ files is that it's so widely supported. This also means
+that millions of dollars are being spent storing gzipped FASTQ data on services
+like s3 while companies like [Meta][meta], [Amazon][amzn], and [Twitter][twtr]
+have all moved to the zstd format for storing data. If the most common
+bioinformatics tools can move to support ingesting zstd-compressed FASTQ format
+this could save everyone time and money with minimal impact on compression
+times.
+
+[meta]: https://engineering.fb.com/2016/08/31/core-data/smaller-and-faster-data-compression-with-zstandard/
+[amzn]: https://twitter.com/adrianco/status/1560854827810361345
+[twtr]: https://twitter.com/danluu/status/1560831128914649088
+
+Consider the figure below. I downloaded ~1.5Gb of uncompressed *E.coli* FASTQ
+data and compressed with either `pigz` or `zstd`. The zstd compressed file is
+almost 50% the size of the gzipped file.
+
+```{r, file-size-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Ratio of file sizes by compression."}
+original_file_size <- 1452
+simple <- data.frame(
+  name = factor(c("pigz -9", "zstd -15")),
+  compress_time = c(37.28, 73.03),
+  decompress_time = c(2.22, 3.52),
+  size_mb = c(238 / original_file_size, 134 / original_file_size)
+)
+
+ggplot(data=simple, aes(x=name, y=size_mb)) +
+    geom_bar(stat = "identity") +
+    scale_x_discrete("Compression tool") +
+    scale_y_continuous("Ratio file size to original")
+```
 
 ```{r, plot-file-size, results='asis', echo=FALSE, message=FALSE, fig.height=5}
 ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
     geom_line(stat="smooth",method = "loess", size = 1.5, alpha = 0.5) +
     geom_point() +
-    theme_bw() +
-    # theme(legend.position=c(.8,.8), legend.box.background = element_rect(colour = "black")) +
     scale_x_continuous("Compression level") +
     scale_y_continuous("Ratio of compressed size to original size")
 ```
@@ -42,7 +72,6 @@ ggplot(data=data, aes(y=compress_time, x=compression_ratio, color=method)) +
     geom_line(stat="smooth",method = "loess", size = 1.5, alpha = 0.5) +
     geom_point() +
     scale_x_log10("Ratio of compressed size to original size") +
-    scale_y_log10("Compression time in seconds (single thread)") +
-    theme_bw()
+    scale_y_log10("Compression time in seconds (single threaded)")
 ```
 
