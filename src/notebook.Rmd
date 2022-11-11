@@ -15,14 +15,14 @@ data <- read.csv('../out/benchmark.SRR7589561.csv', header=TRUE)
   implementations, and other algorithms, yet it is still the default for FASTQ
   data.
 - When using gzip, consider using pigz gzip-cloudflare instead of the original
-  Gailly/Madler gzip.
+  Gailly/Madler implementation.
 - The field should consider the widely zstd format to compress FASTQ data. This
   could provide comparable run times with large potential savings in storage.
 
 The gzip format is still ubiquitous for compressing FASTQ. This format is
 widely supported by bioinformatics tools for ingesting FASTQ. However in the
-thirty years since it was created there have been different implementations,
-and newer superior algorithms developed. The only the thing that seems to keep
+thirty years since it was created there are faster implementations,
+and superior compression alternatives The reason that keep
 gzip in use for FASTQ files is that it's so widely supported. This also means
 that millions of dollars are being spent storing gzipped FASTQ data on services
 like s3 while companies like [Meta][meta], [Amazon][amzn], and [Twitter][twtr]
@@ -35,29 +35,58 @@ times.
 [amzn]: https://twitter.com/adrianco/status/1560854827810361345
 [twtr]: https://twitter.com/danluu/status/1560831128914649088
 
-Consider the figure below. I downloaded ~1.5Gb of uncompressed *E.coli* FASTQ
-data and compressed with either `pigz` or `zstd`. The zstd compressed file is
-almost 50% the size of the gzipped file.
+As an example a zstd compressed file is almost 50% the size of the same gzipped
+file. In the figure below I downloaded ~1.5Gb of uncompressed *E.coli* FASTQ
+data and compressed with either `pigz` or `zstd`. Consider the impact on S3
+storage costs if all FASTQ data could be stored.
 
-```{r, file-size-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Ratio of file sizes by compression."}
+```{r, file-size-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="FASTQ file size by compression."}
 original_file_size <- 1452
-simple <- data.frame(
-  name = factor(c("pigz -9", "zstd -15")),
-  compress_time = c(37.28, 73.03),
-  decompress_time = c(2.22, 3.52),
-  size_mb = c(238 / original_file_size, 134 / original_file_size)
+file_size <- data.frame(
+  name = factor(c("original", "pigz -9", "zstd -15")),
+  size_mb = c(original_file_size, 238, 134)
 )
 
-ggplot(data=simple, aes(x=name, y=size_mb)) +
+ggplot(data=file_size, aes(x=name, y=size_mb)) +
     geom_bar(stat = "identity") +
-    scale_x_discrete("Compression tool") +
-    scale_y_continuous("Ratio file size to original")
+    scale_x_discrete("") +
+    scale_y_continuous("File size (MB)")
 ```
+
+FASTQ files do however take longer to compress to with zstd. The `ztsd -15`
+command takes ~70s which is ~50% longer than `pigz -9` at ~35s. However it's
+worth noting for storing raw sequencing data, these files tend to be compressed
+once then stored for years and this CPU time cost is likely more than worth it.
+The same does not apply for intermediate files such trimmed or filtered FASTQ
+in a pipeline that tend to be ephemeral. It could also be applicable for moving
+FASTQ between file systems when network IO can also be a significant factor in
+run time.
+
+```{r, compress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="File compression time."}
+compress_time <- data.frame(
+  name = factor(c("pigz -9", "zstd -15")),
+  compress_time = c(37.28, 73.03),
+  decompress_time = c(2.22, 3.52)
+)
+
+ggplot(data=compress_time, aes(x=name, y=compress_time)) +
+    geom_bar(stat = "identity") +
+    scale_x_discrete("") +
+    scale_y_continuous("Compression time in seconds.")
+```
+
+```{r, decompress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="File decompression time."}
+ggplot(data=compress_time, aes(x=name, y=decompress_time)) +
+    geom_bar(stat = "identity") +
+    scale_x_discrete("") +
+    scale_y_continuous("Decompression time in seconds.")
+```
+
 
 ```{r, plot-file-size, results='asis', echo=FALSE, message=FALSE, fig.height=5}
 ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
-    geom_line(stat="smooth",method = "loess", linewidth = 1.5, alpha = 0.5) +
+    geom_line(stat="smooth",method = "loess", alpha = 0.5) +
     geom_point() +
     scale_x_continuous("Compression level") +
     scale_y_continuous("Ratio of compressed size to original size")
@@ -68,7 +97,7 @@ ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
 
 ggplot(data=data, aes(y=compress_time, x=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
-    geom_line(stat="smooth",method = "loess", linewidth = 1.5, alpha = 0.5) +
+    geom_line(stat="smooth",method = "loess", alpha = 0.5) +
     geom_point() +
     scale_x_log10("Ratio of compressed size to original size") +
     scale_y_log10("Compression time in seconds (single threaded)")
