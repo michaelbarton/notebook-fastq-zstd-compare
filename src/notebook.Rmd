@@ -4,7 +4,6 @@ title: "Untitled"
 
 ```{r, load-data, echo=FALSE, message=FALSE, fig.height=4}
 library('ggplot2')
-library('tidyverse')
 
 theme_set(theme_bw())
 
