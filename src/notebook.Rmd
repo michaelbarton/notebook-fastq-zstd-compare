@@ -57,7 +57,7 @@ ggplot(data=simple, aes(x=name, y=size_mb)) +
 ```{r, plot-file-size, results='asis', echo=FALSE, message=FALSE, fig.height=5}
 ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
-    geom_line(stat="smooth",method = "loess", size = 1.5, alpha = 0.5) +
+    geom_line(stat="smooth",method = "loess", linewidth = 1.5, alpha = 0.5) +
     geom_point() +
     scale_x_continuous("Compression level") +
     scale_y_continuous("Ratio of compressed size to original size")
@@ -68,7 +68,7 @@ ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
 
 ggplot(data=data, aes(y=compress_time, x=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
-    geom_line(stat="smooth",method = "loess", size = 1.5, alpha = 0.5) +
+    geom_line(stat="smooth",method = "loess", linewidth = 1.5, alpha = 0.5) +
     geom_point() +
     scale_x_log10("Ratio of compressed size to original size") +
     scale_y_log10("Compression time in seconds (single threaded)")
