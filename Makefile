@@ -1,9 +1,21 @@
 export COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1
 
 ITERATIONS = 10
-S3_BUCKET = s3://bioinformatics-zen/202212120000-use-zstd-for-raw-fastq/
+SLUG = use-zstd-for-raw-fastq
 
-all: out/benchmark.SRR7589561.csv out/notebook.md .token/sync
+SRC_IMG_DIR = out/notebook_files/figure-markdown_strict/
+DST_IMG_URLS = https://s3.amazonaws.com/bioinformatics-zen/202212120000-${SLUG}/
+
+S3_BUCKET = s3://bioinformatics-zen/202212120000-${SLUG}/
+DST_FILE = /Users/michaelbarton/cache/bioinformatics-zen/post/${SLUG}.md
+
+# all: out/benchmark.SRR7589561.csv ${DST_FILE}
+
+# Strictly need the benchmark data for this but don't want to regenerate everytime
+${DST_FILE}: out/notebook.njk.md src/front_matter.md .token/sync
+	cp src/front_matter.md $@
+	cat $< >> $@
+
 
 .token/sync: out/notebook.md
 	mkdir -p .token
@@ -14,9 +26,23 @@ all: out/benchmark.SRR7589561.csv out/notebook.md .token/sync
 		${S3_BUCKET}
 	touch $@
 
+out/notebook.njk.md: ~/cache/bioinformatics-zen/bin/convert_markdown_images_to_captions.py out/notebook.md
+	 $^ \
+		 $@ \
+		--src-image-dir=/mnt/${SRC_IMG_DIR} \
+		--dst-image-url=${DST_IMG_URLS} \
+		--lede
+
+
 out/notebook.md: src/notebook.Rmd
 	docker-compose run --rm notebook_builder \
 		Rscript --vanilla -e "rmarkdown::render('/mnt/$<', 'md_document', output_file = '/mnt/$@')"
+	# Copy image card over
+	cp src/image_card.jpg out/notebook_files/figure-markdown_strict/
+
+out/notebook.html: src/notebook.Rmd
+	docker-compose run --rm notebook_builder \
+		Rscript --vanilla -e "rmarkdown::render('/mnt/$<', 'html_document', output_file = '/mnt/$@')"
 
 out/benchmark.%.csv: data/%.fastq
 	docker-compose run --rm runner \
@@ -41,4 +67,4 @@ image:
 	docker-compose build notebook_builder
 
 clean:
-	rm -fr out .token
+	rm -fr out .token ${DST_FILE}

@@ -11,19 +11,22 @@ theme_set(theme_bw())
 data <- read.csv('../out/benchmark.SRR7589561.csv', header=TRUE)
 ```
 
-The cheaper and greater throughput of Illumina DNA sequencing means
-institutions and companies are paying monthly storage costs for terabytes of
-raw DNA sequence (FASTQ). This data is stored using gzip, a 30 year old
-compression algorithm. Bioinformatics tools should support more recent
-algorithms such as zstd for FASTQ data. Zstd has wide industry support, with
-comparable run times and would likely reduce storage costs by 50% over gzip.
+::: {#lede}
+- The increasing throughput of Illumina DNA sequencing means institutions and
+  companies are spending tens of thousands of dollars to store terabytes of raw
+  DNA sequence (FASTQ). This data is stored using gzip, a 30-year-old
+  compression algorithm.
+- Common bioinformatics tools should support more recent compression algorithms
+  such as zstd for FASTQ data. Zstd has wide industry support, with comparable
+  run times and would likely reduce storage costs by 50% over gzip.
+:::
 
 ## Gzip is outperformed by other algorithms
 
-The original Gailly/Madler implementation has been surpassed in performance by
-other gzip implementations. For example [cloudflare-zlib][] outperforms Madler
-gzip in compression speeds and should be used instead of the default system
-gzip.
+The original Gailly/Madler implementation of gzip has been surpassed in
+performance by other gzip implementations. For example, [cloudflare-zlib][]
+outperforms Madler gzip in compression speeds and should be used instead of the
+default system gzip.
 
 [cloudflare-zlib]: https://github.com/cloudflare/zlib
 
@@ -46,11 +49,11 @@ and money with minimal impact on compression times.
 
 As an example a zstd compressed FASTQ file ([SRR7589561][]) is almost 50% the
 size of the same gzipped file. In the figure below I downloaded ~1.5Gb of FASTQ
-data and compressed with either `pigz` or `zstd`.
+data and compressed it with either `pigz` or `zstd`. Pigz is a parallel implementation of the original gzip.
 
 [SRR7589561]: https://trace.ncbi.nlm.nih.gov/Traces/?view=run_browser&acc=SRR7589561&display=metadata
 
-```{r, file-size-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="FASTQ file size by compression"}
+```{r, file-size-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="FASTQ file size by compression algorithm."}
 original_file_size <- 1452
 file_size <- data.frame(
   name = factor(c("original", "pigz -9", "zstd -15")),
@@ -66,12 +69,12 @@ ggplot(data=file_size, aes(x=name, y=size_mb)) +
 FASTQ files do however take longer to compress with zstd. The `ztsd -15`
 command takes ~70s which is 50% longer than `pigz -9` at ~35s. However, it's
 worth noting for storing raw data from a sequencer, these files are compressed
-once, then stored for years. This additional CPU time cost is more than offset
-by savings in storage costs. The same does not apply for intermediate files
-such trimmed or filtered FASTQ in a pipeline that tend to be ephemeral. These
+once, and then stored for years. This additional CPU time cost is more than offset
+by savings in storage costs. The same does not apply to intermediate files
+such as trimmed or filtered FASTQ in a pipeline that tend to be ephemeral. These
 should likely continue to use gzip.
 
-```{r, compress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="File compression time"}
+```{r, compress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Total compression time in seconds by algorithm."}
 compress_time <- data.frame(
   name = factor(c("pigz -9", "zstd -15")),
   compress_time = c(37.28, 73.03),
@@ -84,17 +87,18 @@ ggplot(data=compress_time, aes(x=name, y=compress_time)) +
     scale_y_continuous("Compression time in seconds")
 ```
 
-Changes in decompression time are relatively small, 3.5s vs 2.2s. Therefore
-decompression would be minimally impacted.
+The next figure shows that changes in decompression time for the same file are
+relatively small, 3.5s vs 2.2s. Therefore decompression would be minimally
+impacted.
 
-```{r, decompress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="File decompression time"}
+```{r, decompress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Total decompression time in seconds by algorithm."}
 ggplot(data=compress_time, aes(x=name, y=decompress_time)) +
     geom_bar(stat = "identity") +
     scale_x_discrete("") +
     scale_y_continuous("Decompression time in seconds")
 ```
 
-## Detail comparison of flags
+## Detailed comparison of flags
 
 This figure compares the compressed output file size for all the different
 available gzip implementations with zstd for different compression flags on the
@@ -102,7 +106,7 @@ same SRR7589561 FASTQ file. This shows that zstd outperforms gzip at the
 highest compression levels, with the output file sizes being ~60% the size of
 the highest gzip compression levels.
 
-```{r, plot-file-size, results='asis', echo=FALSE, message=FALSE, fig.height=5}
+```{r, plot-file-size, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Output compressed file size ratios by command line flag for each compression tool. Each colour represents a different compression tool implementation. Each argument was benchmarked five times. Note that zopfli has a single datum because it only compresses to the max ratio."}
 ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
     geom_line(stat="smooth",method = "loess", alpha = 0.5) +
@@ -111,15 +115,15 @@ ggplot(data=data, aes(x=compression_level, y=compression_ratio, color=method)) +
     scale_y_continuous("Ratio of compressed size to original size")
 ```
 
-This next plot compares the trade offs for file size versus the wall clock run
+This next plot compares the trade-offs for file size versus the wall clock run
 time taken to compress a FASTQ file. This is for the compression process running
-single threaded. This shows that zstd can result in much better compression
+single-threaded. This shows that zstd can result in much better compression
 ratios, ~10% of the original file size but with increasing run time. Though not
-nearly as long as the run time for zopfli, a gzip implementation that gives the
+nearly as long as the run time for zopfli, a gzip implementation gives the
 best compression ratio of any gzip implementation but at the expense ~2 orders
 of magnitude in compression time.
 
-```{r, plot-compression-time, results='asis', echo=FALSE, message=FALSE, fig.height=5}
+```{r, plot-compression-time, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Compression ratio versus compression time. Each colour represents a different compression tool implementation. Each argument was benchmarked five times. Note that zopfli has a single point because it only compresses to the max ratio."}
 ggplot(data=data, aes(y=compress_time, x=compression_ratio, color=method)) +
     geom_ribbon(stat='smooth', method = "loess", se=TRUE, alpha=0.075, linetype=0, aes(color = NULL, group = factor(method))) +
     geom_line(stat="smooth",method = "loess", alpha = 0.5) +
@@ -134,4 +138,3 @@ The gzip implementation is superseded by other compression algorithms such as
 zstd. By continuing to only support gzip for FASTQ, the bioinformatics industry spends
 money unnecessarily on additional storage. Bioinformatics tools should widely
 support zstd as a compression format for FASTQ.
-
