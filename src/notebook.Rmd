@@ -67,12 +67,12 @@ ggplot(data=file_size, aes(x=name, y=size_mb)) +
 ```
 
 FASTQ files do however take longer to compress with zstd. The `ztsd -15`
-command takes ~70s which is 50% longer than `pigz -9` at ~35s. However, it's
-worth noting for storing raw data from a sequencer, these files are compressed
-once, and then stored for years. This additional CPU time cost is more than offset
-by savings in storage costs. The same does not apply to intermediate files
-such as trimmed or filtered FASTQ in a pipeline that tend to be ephemeral. These
-should likely continue to use gzip.
+command takes ~70s which is 100% longer than `pigz -9` at ~35s. However, it's
+worth noting when storing raw FASTQ from a sequencer, these files are
+compressed once, and then stored for years. This additional CPU time cost is
+more than offset by savings in storage costs. The same does not apply to
+intermediate files such as trimmed or filtered FASTQ in a pipeline that tend to
+be ephemeral. These would require a further examination of trade offs.
 
 ```{r, compress-time-example, results='asis', echo=FALSE, message=FALSE, fig.height=5, fig.cap="Total compression time in seconds by algorithm."}
 compress_time <- data.frame(
