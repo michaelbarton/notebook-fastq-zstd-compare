@@ -1,5 +1,8 @@
 ---
 title: "We're wasting money by only supporting gzip for raw DNA sequence."
+output:
+  md_document:
+    pandoc_args: ["--atx-headers"]
 ---
 
 ```{r, load-data, echo=FALSE, message=FALSE, fig.height=4}
